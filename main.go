@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"flag"
 	"fmt"
 	"go/build"
 	"io"
@@ -12,19 +13,50 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 )
 
+func usage() {
+	fmt.Fprintln(os.Stderr, "Usage: binstale [binaries]")
+	flag.PrintDefaults()
+}
+
 func main() {
-	err := run3()
+	flag.Usage = usage
+	flag.Parse()
+
+	// Populate filter, a set of binaries that user wants use.
+	filter := make(map[string]struct{})
+	if args := flag.Args(); len(args) != 0 {
+		for _, arg := range args {
+			filter[arg] = struct{}{}
+		}
+	}
+
+	// Find all commands and determine if they're stale or up to date.
+	commands, err := commands()
 	if err != nil {
 		log.Fatalln(err)
 	}
 
-	err = run()
+	// Find binaries in GOPATH/bin directories.
+	binaries, err := binaries(filter)
 	if err != nil {
 		log.Fatalln(err)
+	}
+
+	// Print output.
+	sort.Strings(binaries)
+	for _, binary := range binaries {
+		fmt.Println(" ", binary)
+		for _, importPathStatus := range commands[binary] {
+			fmt.Println("   ", importPathStatus)
+		}
+		if len(commands[binary]) == 0 {
+			fmt.Println("    (no source package found)")
+		}
 	}
 }
 
@@ -43,12 +75,14 @@ func (ips importPathStatus) String() string {
 	panic("unreachable")
 }
 
-var commands = make(map[string][]importPathStatus) // Command name -> list of import paths with statuses.
+// commands finds all commands in all GOPATH workspaces (not GOROOT), determines if they're stale or up to date,
+// and returns the results.
+func commands() (map[string][]importPathStatus, error) {
+	var commands = make(map[string][]importPathStatus) // Command name -> list of import paths with statuses.
 
-func run3() error {
 	out, err := exec.Command("go", "list", "-e", "-f", `{{if (and (not .Error) (not .Goroot) (eq .Name "main"))}}{{.ImportPath}}	{{.Stale}}{{end}}`, "all").Output()
 	if err != nil {
-		return fmt.Errorf("failed to run go list: %v", err)
+		return nil, fmt.Errorf("failed to run go list: %v", err)
 	}
 
 	br := bufio.NewReader(bytes.NewReader(out))
@@ -57,7 +91,7 @@ func run3() error {
 		if err == io.EOF {
 			break
 		} else if err != nil {
-			return err
+			return nil, err
 		}
 		line = line[:len(line)-1] // Trim trailing newline.
 
@@ -67,7 +101,7 @@ func run3() error {
 
 		stale, err := strconv.ParseBool(importPathAndStale[1])
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		commandName := path.Base(importPath)
@@ -80,39 +114,22 @@ func run3() error {
 		)
 	}
 
-	return nil
+	return commands, nil
 }
 
-/*func run2() error {
-	goPackages := make(chan *gist7480523.GoPackage, 64)
-	go gist8018045.GetGopathGoPackages(goPackages)
-	for {
-		goPackage, ok := <-goPackages
-		if !ok {
-			break
-		}
+// binaries finds binaries in GOPATH/bin directories, filtering results with filter if it's not empty.
+func binaries(filter map[string]struct{}) ([]string, error) {
+	var binaries []string // Binaries that were found and not filtered out.
 
-		if goPackage.Bpkg.Name != "main" {
-			continue
-		}
-		commandName := path.Base(goPackage.Bpkg.ImportPath)
-		commands[commandName] = append(commands[commandName], importPathStatus{importPath: goPackage.Bpkg.ImportPath})
-	}
-
-	return nil
-}*/
-
-func run() error {
 	workspaces := filepath.SplitList(build.Default.GOPATH)
 	for _, workspace := range workspaces {
 		gobin := filepath.Join(workspace, "bin")
-		fmt.Println(gobin)
 
 		fis, err := ioutil.ReadDir(gobin)
 		if os.IsNotExist(err) {
 			continue
 		} else if err != nil {
-			return err
+			return nil, err
 		}
 
 		for _, fi := range fis {
@@ -123,12 +140,16 @@ func run() error {
 				continue
 			}
 
-			fmt.Println(" ", fi.Name())
-			for _, importPathStatus := range commands[fi.Name()] {
-				fmt.Println("   ", importPathStatus)
+			// If user specified a list of binaries, filter out binaries that don't match.
+			if len(filter) != 0 {
+				if _, ok := filter[fi.Name()]; !ok {
+					continue
+				}
 			}
+
+			binaries = append(binaries, fi.Name())
 		}
 	}
 
-	return nil
+	return binaries, nil
 }
