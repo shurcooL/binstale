@@ -28,10 +28,11 @@ func main() {
 	flag.Parse()
 
 	// Populate filter, a set of binaries that user wants use.
-	filter := make(map[string]struct{})
+	// Also keep track which filters have been matched (to print warnings at the end if not matched).
+	filter := make(map[string]matched)
 	if args := flag.Args(); len(args) != 0 {
 		for _, arg := range args {
-			filter[arg] = struct{}{}
+			filter[arg] = matched(false)
 		}
 	}
 
@@ -48,6 +49,12 @@ func main() {
 	}
 
 	// Print output.
+	for binary, matched := range filter {
+		if matched {
+			continue
+		}
+		fmt.Fprintf(os.Stderr, "warning: %q matched no binaries in GOPATH/bin\n", binary)
+	}
 	sort.Strings(binaries)
 	for _, binary := range binaries {
 		fmt.Println(" ", binary)
@@ -59,6 +66,8 @@ func main() {
 		}
 	}
 }
+
+type matched bool
 
 type importPathStatus struct {
 	importPath string
@@ -118,7 +127,7 @@ func commands() (map[string][]importPathStatus, error) {
 }
 
 // binaries finds binaries in GOPATH/bin directories, filtering results with filter if it's not empty.
-func binaries(filter map[string]struct{}) ([]string, error) {
+func binaries(filter map[string]matched) ([]string, error) {
 	var binaries []string // Binaries that were found and not filtered out.
 
 	workspaces := filepath.SplitList(build.Default.GOPATH)
@@ -145,6 +154,7 @@ func binaries(filter map[string]struct{}) ([]string, error) {
 				if _, ok := filter[fi.Name()]; !ok {
 					continue
 				}
+				filter[fi.Name()] = matched(true)
 			}
 
 			binaries = append(binaries, fi.Name())
