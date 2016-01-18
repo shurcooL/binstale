@@ -53,17 +53,38 @@ func main() {
 		if matched {
 			continue
 		}
-		fmt.Fprintf(os.Stderr, "warning: %q matched no binaries in GOPATH/bin\n", binary)
+		fmt.Fprintf(os.Stderr, "cannot find binary %q in any of:\n", binary)
+		workspaces := filepath.SplitList(build.Default.GOPATH)
+		for i, workspace := range workspaces {
+			path := filepath.Join(workspace, "bin", binary)
+			switch i {
+			case 0:
+				fmt.Fprintf(os.Stderr, "\t%s (from $GOPATH)\n", path)
+			default:
+				fmt.Fprintf(os.Stderr, "\t%s\n", path)
+			}
+		}
+		if len(workspaces) == 0 {
+			fmt.Fprintln(os.Stderr, "\t($GOPATH not set)")
+		}
 	}
 	sort.Strings(binaries)
 	for _, binary := range binaries {
-		fmt.Println(" ", binary)
+		fmt.Println(binary)
 		for _, importPathStatus := range commands[binary] {
-			fmt.Println("   ", importPathStatus)
+			fmt.Printf("\t%s\n", importPathStatus)
 		}
 		if len(commands[binary]) == 0 {
-			fmt.Println("    (no source package found)")
+			fmt.Printf("\t(no source package found)\n")
 		}
+	}
+
+	// If any of the filters weren't matched, exit with code 1.
+	for _, matched := range filter {
+		if matched {
+			continue
+		}
+		os.Exit(1)
 	}
 }
 
