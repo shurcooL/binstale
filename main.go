@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -56,7 +57,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "cannot find binary %q in any of:\n", binary)
 		workspaces := filepath.SplitList(build.Default.GOPATH)
 		for i, workspace := range workspaces {
-			path := filepath.Join(workspace, "bin", binary)
+			path := filepath.Join(workspace, "bin", binaryName(binary))
 			switch i {
 			case 0:
 				fmt.Fprintf(os.Stderr, "\t%s (from $GOPATH)\n", path)
@@ -169,18 +170,42 @@ func binaries(filter map[string]matched) ([]string, error) {
 			if strings.HasPrefix(fi.Name(), ".") {
 				continue
 			}
+			// Ignore non-exe files on Windows.
+			if fi.Name() != binaryName(canonicalName(fi.Name())) {
+				continue
+			}
 
 			// If user specified a list of binaries, filter out binaries that don't match.
 			if len(filter) != 0 {
-				if _, ok := filter[fi.Name()]; !ok {
+				if _, ok := filter[canonicalName(fi.Name())]; !ok {
 					continue
 				}
-				filter[fi.Name()] = matched(true)
+				filter[canonicalName(fi.Name())] = matched(true)
 			}
 
-			binaries = append(binaries, fi.Name())
+			binaries = append(binaries, canonicalName(fi.Name()))
 		}
 	}
 
 	return binaries, nil
+}
+
+// canonicalName, when called on a Windows system, trims the ".exe" suffix from
+// the end of a binary's filename.
+func canonicalName(anyName string) string {
+	if "windows" == runtime.GOOS {
+		return strings.TrimSuffix(anyName, ".exe")
+	} else {
+		return anyName
+	}
+}
+
+// binaryName, when called on a Windows system, adds a ".exe" suffix to a
+// basename to produce the name of a binary in the Windows filesystem.
+func binaryName(canonicalName string) string {
+	if "windows" == runtime.GOOS {
+		return canonicalName + ".exe"
+	} else {
+		return canonicalName
+	}
 }
