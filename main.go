@@ -32,7 +32,7 @@ func main() {
 	filter := make(map[string]matched)
 	if args := flag.Args(); len(args) != 0 {
 		for _, arg := range args {
-			filter[arg] = matched(false)
+			filter[canonicalName(arg)] = matched(false)
 		}
 	}
 
@@ -172,15 +172,21 @@ func binaries(filter map[string]matched) ([]string, error) {
 
 			// If user specified a list of binaries, filter out binaries that don't match.
 			if len(filter) != 0 {
-				if _, ok := filter[fi.Name()]; !ok {
+				if _, ok := filter[canonicalName(fi.Name())]; !ok {
 					continue
 				}
-				filter[fi.Name()] = matched(true)
+				filter[canonicalName(fi.Name())] = matched(true)
 			}
 
-			binaries = append(binaries, fi.Name())
+			binaries = append(binaries, canonicalName(fi.Name()))
 		}
 	}
 
 	return binaries, nil
+}
+
+// canonicalName converts a filename which may have a ".exe" extension to the
+// equivalent filename with no ".exe" extension.
+func canonicalName(anyName string) string {
+	return strings.TrimSuffix(anyName, ".exe")
 }
