@@ -32,7 +32,7 @@ func main() {
 	filter := make(map[string]matched)
 	if args := flag.Args(); len(args) != 0 {
 		for _, arg := range args {
-			filter[canonicalName(arg)] = matched(false)
+			filter[arg] = matched(false)
 		}
 	}
 
