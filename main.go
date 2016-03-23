@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -188,5 +189,10 @@ func binaries(filter map[string]matched) ([]string, error) {
 // canonicalName converts a filename which may have a ".exe" extension to the
 // equivalent filename with no ".exe" extension.
 func canonicalName(anyName string) string {
-	return strings.TrimSuffix(anyName, ".exe")
+	if "windows" == runtime.GOOS {
+		return strings.TrimSuffix(anyName, ".exe")
+	} else {
+		return anyName
+	}
+
 }
