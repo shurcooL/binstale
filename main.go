@@ -197,4 +197,13 @@ func canonicalName(anyName string) string {
 	panic("unreachable")
 }
 
+// binaryName, when called on a Windows system, adds a ".exe" suffix to a
+// basename to produce the name of a binary in the Windows filesystem.
+func binaryName(canonicalName string) string {
+	if "windows" == runtime.GOOS {
+		return canonicalName + ".exe"
+	} else {
+		return canonicalName
+	}
+	panic("unreachable")
 }
