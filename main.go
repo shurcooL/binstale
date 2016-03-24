@@ -57,7 +57,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "cannot find binary %q in any of:\n", binary)
 		workspaces := filepath.SplitList(build.Default.GOPATH)
 		for i, workspace := range workspaces {
-			path := filepath.Join(workspace, "bin", binary)
+			path := filepath.Join(workspace, "bin", binaryName(binary))
 			switch i {
 			case 0:
 				fmt.Fprintf(os.Stderr, "\t%s (from $GOPATH)\n", path)
