@@ -170,14 +170,14 @@ func binaries(filter map[string]matched) ([]string, error) {
 			if strings.HasPrefix(fi.Name(), ".") {
 				continue
 			}
+			// Ignore non-exe files on Windows.
+			if fi.Name() != binaryName(canonicalName(fi.Name())) {
+				continue
+			}
 
 			// If user specified a list of binaries, filter out binaries that don't match.
 			if len(filter) != 0 {
 				if _, ok := filter[canonicalName(fi.Name())]; !ok {
-					continue
-				}
-				// Ignore non-exe files on Windows.
-				if fi.Name() != binaryName(canonicalName(fi.Name())) {
 					continue
 				}
 				filter[canonicalName(fi.Name())] = matched(true)
