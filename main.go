@@ -176,6 +176,10 @@ func binaries(filter map[string]matched) ([]string, error) {
 				if _, ok := filter[canonicalName(fi.Name())]; !ok {
 					continue
 				}
+				// Ignore non-exe files on Windows.
+				if fi.Name() != binaryName(canonicalName(fi.Name())) {
+					continue
+				}
 				filter[canonicalName(fi.Name())] = matched(true)
 			}
 
