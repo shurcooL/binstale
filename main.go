@@ -186,8 +186,8 @@ func binaries(filter map[string]matched) ([]string, error) {
 	return binaries, nil
 }
 
-// canonicalName converts a filename which may have a ".exe" extension to the
-// equivalent filename with no ".exe" extension.
+// canonicalName, when called on a Windows system, trims the ".exe" suffix from
+// the end of a binary's filename.
 func canonicalName(anyName string) string {
 	if "windows" == runtime.GOOS {
 		return strings.TrimSuffix(anyName, ".exe")
