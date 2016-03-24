@@ -198,7 +198,6 @@ func canonicalName(anyName string) string {
 	} else {
 		return anyName
 	}
-	panic("unreachable")
 }
 
 // binaryName, when called on a Windows system, adds a ".exe" suffix to a
@@ -209,5 +208,4 @@ func binaryName(canonicalName string) string {
 	} else {
 		return canonicalName
 	}
-	panic("unreachable")
 }
