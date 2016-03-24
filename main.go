@@ -194,5 +194,7 @@ func canonicalName(anyName string) string {
 	} else {
 		return anyName
 	}
+	panic("unreachable")
+}
 
 }
