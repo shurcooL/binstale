@@ -20,7 +20,7 @@ import (
 )
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "Usage: binstale [binaries]")
+	fmt.Fprintln(os.Stderr, "Usage: binstale [command names]")
 	flag.PrintDefaults()
 }
 
@@ -50,14 +50,15 @@ func main() {
 	}
 
 	// Print output.
-	for binary, matched := range filter {
+	for commandName, matched := range filter {
+		binary := binaryName(commandName)
 		if matched {
 			continue
 		}
 		fmt.Fprintf(os.Stderr, "cannot find binary %q in any of:\n", binary)
 		workspaces := filepath.SplitList(build.Default.GOPATH)
 		for i, workspace := range workspaces {
-			path := filepath.Join(workspace, "bin", binaryName(binary))
+			path := filepath.Join(workspace, "bin", binary)
 			switch i {
 			case 0:
 				fmt.Fprintf(os.Stderr, "\t%s (from $GOPATH)\n", path)
@@ -70,12 +71,12 @@ func main() {
 		}
 	}
 	sort.Strings(binaries)
-	for _, binary := range binaries {
-		fmt.Println(binary)
-		for _, importPathStatus := range commands[binary] {
+	for _, commandName := range binaries {
+		fmt.Println(commandName)
+		for _, importPathStatus := range commands[commandName] {
 			fmt.Printf("\t%s\n", importPathStatus)
 		}
-		if len(commands[binary]) == 0 {
+		if len(commands[commandName]) == 0 {
 			fmt.Printf("\t(no source package found)\n")
 		}
 	}
@@ -148,6 +149,7 @@ func commands() (map[string][]importPathStatus, error) {
 	return commands, nil
 }
 
+// TODO: There's a bit of a mismatch between name of func, binaries, and it returning "names of installed commands". Fix that.
 // binaries finds binaries in GOPATH/bin directories, filtering results with filter if it's not empty.
 func binaries(filter map[string]matched) ([]string, error) {
 	var binaries []string // Binaries that were found and not filtered out.
@@ -164,48 +166,48 @@ func binaries(filter map[string]matched) ([]string, error) {
 		}
 
 		for _, fi := range fis {
-			if fi.IsDir() {
-				continue
-			}
-			if strings.HasPrefix(fi.Name(), ".") {
-				continue
-			}
-			// Ignore non-exe files on Windows.
-			if fi.Name() != binaryName(canonicalName(fi.Name())) {
+			commandName, ok := commandName(fi)
+			if !ok {
 				continue
 			}
 
 			// If user specified a list of binaries, filter out binaries that don't match.
 			if len(filter) != 0 {
-				if _, ok := filter[canonicalName(fi.Name())]; !ok {
+				if _, ok := filter[commandName]; !ok {
 					continue
 				}
-				filter[canonicalName(fi.Name())] = matched(true)
+				filter[commandName] = matched(true)
 			}
 
-			binaries = append(binaries, canonicalName(fi.Name()))
+			binaries = append(binaries, commandName)
 		}
 	}
 
 	return binaries, nil
 }
 
-// canonicalName, when called on a Windows system, trims the ".exe" suffix from
-// the end of a binary's filename.
-func canonicalName(anyName string) string {
-	if "windows" == runtime.GOOS {
-		return strings.TrimSuffix(anyName, ".exe")
-	} else {
-		return anyName
+// commandName returns the name of Go command that would've resulted in this binary file, if possible.
+func commandName(fi os.FileInfo) (commandName string, ok bool) {
+	if fi.IsDir() {
+		return "", false
 	}
+	if strings.HasPrefix(fi.Name(), ".") {
+		return "", false
+	}
+
+	if "windows" == runtime.GOOS {
+		if !strings.HasSuffix(fi.Name(), ".exe") {
+			return "", false
+		}
+		return fi.Name()[:len(fi.Name())-4], true
+	}
+	return fi.Name(), true
 }
 
-// binaryName, when called on a Windows system, adds a ".exe" suffix to a
-// basename to produce the name of a binary in the Windows filesystem.
-func binaryName(canonicalName string) string {
+// binaryName returns the name of binary for the given command name.
+func binaryName(commandName string) string {
 	if "windows" == runtime.GOOS {
-		return canonicalName + ".exe"
-	} else {
-		return canonicalName
+		return commandName + ".exe"
 	}
+	return commandName
 }

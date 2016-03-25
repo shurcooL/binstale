@@ -3,7 +3,7 @@
 binstale tells you whether the binaries in your GOPATH/bin are stale or up to date.
 
 	$ binstale -help
-	Usage: binstale [binaries]
+	Usage: binstale [command names]
 
 Example Output
 
