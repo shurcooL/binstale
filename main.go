@@ -195,7 +195,7 @@ func commandName(fi os.FileInfo) (commandName string, ok bool) {
 		return "", false
 	}
 
-	if "windows" == runtime.GOOS {
+	if runtime.GOOS == "windows" {
 		if !strings.HasSuffix(fi.Name(), ".exe") {
 			return "", false
 		}
@@ -206,7 +206,7 @@ func commandName(fi os.FileInfo) (commandName string, ok bool) {
 
 // binaryName returns the name of binary for the given command name.
 func binaryName(commandName string) string {
-	if "windows" == runtime.GOOS {
+	if runtime.GOOS == "windows" {
 		return commandName + ".exe"
 	}
 	return commandName
