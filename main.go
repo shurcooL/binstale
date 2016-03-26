@@ -30,10 +30,10 @@ func main() {
 
 	// Populate filter, a set of binaries that user wants use.
 	// Also keep track which filters have been matched (to print warnings at the end if not matched).
-	filter := make(map[string]matched)
+	filter := make(filter)
 	if args := flag.Args(); len(args) != 0 {
 		for _, arg := range args {
-			filter[arg] = matched(false)
+			filter[arg] = notMatched
 		}
 	}
 
@@ -44,7 +44,7 @@ func main() {
 	}
 
 	// Find binaries in GOPATH/bin directories.
-	binaries, err := binaries(filter)
+	commandNames, err := binaries(filter)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -70,8 +70,8 @@ func main() {
 			fmt.Fprintln(os.Stderr, "\t($GOPATH not set)")
 		}
 	}
-	sort.Strings(binaries)
-	for _, commandName := range binaries {
+	sort.Strings(commandNames)
+	for _, commandName := range commandNames {
 		fmt.Println(commandName)
 		for _, importPathStatus := range commands[commandName] {
 			fmt.Printf("\t%s\n", importPathStatus)
@@ -89,8 +89,6 @@ func main() {
 		os.Exit(1)
 	}
 }
-
-type matched bool
 
 type importPathStatus struct {
 	importPath string
@@ -149,11 +147,21 @@ func commands() (map[string][]importPathStatus, error) {
 	return commands, nil
 }
 
-// TODO: There's a bit of a mismatch between name of func, binaries, and it returning "names of installed commands". Fix that.
-// binaries finds binaries in GOPATH/bin directories, filtering results with filter if it's not empty.
-func binaries(filter map[string]matched) ([]string, error) {
-	var binaries []string // Binaries that were found and not filtered out.
+// filter is a set of binaries that user wants use.
+// It keeps track which filters have been matched.
+type filter map[string]matched
 
+// matched represents whether a filter has been matched.
+type matched bool
+
+const (
+	notMatched matched = false
+	didMatch   matched = true
+)
+
+// binaries finds binaries in GOPATH/bin directories, filtering results with filter if it's not empty,
+// and returns the command names corresponding to those binaries.
+func binaries(filter filter) (commandNames []string, err error) {
 	workspaces := filepath.SplitList(build.Default.GOPATH)
 	for _, workspace := range workspaces {
 		gobin := filepath.Join(workspace, "bin")
@@ -176,14 +184,13 @@ func binaries(filter map[string]matched) ([]string, error) {
 				if _, ok := filter[commandName]; !ok {
 					continue
 				}
-				filter[commandName] = matched(true)
+				filter[commandName] = didMatch
 			}
 
-			binaries = append(binaries, commandName)
+			commandNames = append(commandNames, commandName)
 		}
 	}
-
-	return binaries, nil
+	return commandNames, nil
 }
 
 // commandName returns the name of Go command that would've resulted in this binary file, if possible.
