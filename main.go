@@ -38,7 +38,7 @@ func main() {
 	}
 
 	// Find all commands and determine if they're stale or up to date.
-	commands, err := commands()
+	commands, err := commands(filter)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -105,12 +105,24 @@ func (ips importPathStatus) String() string {
 	panic("unreachable")
 }
 
-// commands finds all commands in all GOPATH workspaces (not GOROOT), determines if they're stale or up to date,
-// and returns the results.
-func commands() (map[string][]importPathStatus, error) {
+// commands finds all commands matching filter in all GOPATH workspaces (not GOROOT),
+// determines if they're stale or up to date, and returns the results.
+func commands(filter filter) (map[string][]importPathStatus, error) {
 	var commands = make(map[string][]importPathStatus) // Command name -> list of import paths with statuses.
 
-	out, err := exec.Command("go", "list", "-e", "-f", `{{if (and (not .Error) (not .Goroot) (eq .Name "main"))}}{{.ImportPath}}	{{.Stale}}{{end}}`, "all").Output()
+	args := []string{"go", "list", "-e", "-f", `{{if (and (not .Error) (not .Goroot) (eq .Name "main"))}}{{.ImportPath}}	{{.Stale}}{{end}}`}
+	switch {
+	case len(filter) == 0:
+		// Look for all packages.
+		args = append(args, "all")
+	default:
+		// Look for packages with matching suffixes only.
+		// For a small number of filters (typical), this is faster than all packages.
+		for commandName := range filter {
+			args = append(args, "..."+commandName)
+		}
+	}
+	out, err := exec.Command(args[0], args[1:]...).Output()
 	if err != nil {
 		return nil, fmt.Errorf("failed to run go list: %v", err)
 	}
