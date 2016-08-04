@@ -137,11 +137,11 @@ func commands(filter filter) (map[string][]importPathStatus, error) {
 		}
 		line = line[:len(line)-1] // Trim trailing newline.
 
-		importPathAndStale := strings.Split(line, "\t")
+		importPathStale := strings.Split(line, "\t")
 
-		importPath := importPathAndStale[0]
+		importPath := importPathStale[0]
 
-		stale, err := strconv.ParseBool(importPathAndStale[1])
+		stale, err := strconv.ParseBool(importPathStale[1])
 		if err != nil {
 			return nil, err
 		}
@@ -191,7 +191,7 @@ func binaries(filter filter) (commandNames []string, err error) {
 				continue
 			}
 
-			// If user specified a list of binaries, filter out binaries that don't match.
+			// If user specified a list of command names, filter out command names that don't match.
 			if len(filter) != 0 {
 				if _, ok := filter[commandName]; !ok {
 					continue
