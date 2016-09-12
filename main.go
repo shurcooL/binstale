@@ -93,6 +93,7 @@ func main() {
 type importPathStatus struct {
 	importPath string
 	stale      bool
+	reason     string
 }
 
 func (ips importPathStatus) String() string {
@@ -100,7 +101,7 @@ func (ips importPathStatus) String() string {
 	case false:
 		return "up to date: " + ips.importPath
 	case true:
-		return "\033[1m" + "\033[31m" + "STALE" + "\033[0m" + ": " + ips.importPath
+		return "\033[1m" + "\033[31m" + "STALE" + "\033[0m" + ": " + ips.importPath + " (" + ips.reason + ")"
 	}
 	panic("unreachable")
 }
@@ -110,7 +111,7 @@ func (ips importPathStatus) String() string {
 func commands(filter filter) (map[string][]importPathStatus, error) {
 	var commands = make(map[string][]importPathStatus) // Command name -> list of import paths with statuses.
 
-	args := []string{"go", "list", "-e", "-f", `{{if (and (not .Error) (not .Goroot) (eq .Name "main"))}}{{.ImportPath}}	{{.Stale}}{{end}}`}
+	args := []string{"go", "list", "-e", "-f", `{{if (and (not .Error) (not .Goroot) (eq .Name "main"))}}{{.ImportPath}}	{{.Stale}}	{{.StaleReason}}{{end}}`}
 	switch {
 	case len(filter) == 0:
 		// Look for all packages.
@@ -137,14 +138,13 @@ func commands(filter filter) (map[string][]importPathStatus, error) {
 		}
 		line = line[:len(line)-1] // Trim trailing newline.
 
-		importPathStale := strings.Split(line, "\t")
-
-		importPath := importPathStale[0]
-
-		stale, err := strconv.ParseBool(importPathStale[1])
+		importPathStaleReason := strings.Split(line, "\t")
+		importPath := importPathStaleReason[0]
+		stale, err := strconv.ParseBool(importPathStaleReason[1])
 		if err != nil {
 			return nil, err
 		}
+		reason := importPathStaleReason[2]
 
 		commandName := path.Base(importPath)
 
@@ -152,6 +152,7 @@ func commands(filter filter) (map[string][]importPathStatus, error) {
 			importPathStatus{
 				importPath: importPath,
 				stale:      stale,
+				reason:     reason,
 			},
 		)
 	}
