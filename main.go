@@ -101,7 +101,7 @@ func (ips importPathStatus) String() string {
 	case false:
 		return "up to date: " + ips.importPath
 	case true:
-		return "\033[1m" + "\033[31m" + "STALE" + "\033[0m" + ": " + ips.importPath + " (" + ips.reason + ")"
+		return "stale: " + ips.importPath + " (" + ips.reason + ")"
 	}
 	panic("unreachable")
 }
