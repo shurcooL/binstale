@@ -1,7 +1,7 @@
 binstale
 ========
 
-[![Build Status](https://travis-ci.org/shurcooL/binstale.svg?branch=master)](https://travis-ci.org/shurcooL/binstale) [![GoDoc](https://godoc.org/github.com/shurcooL/binstale?status.svg)](https://godoc.org/github.com/shurcooL/binstale)
+[![Go Reference](https://pkg.go.dev/badge/github.com/shurcooL/binstale.svg)](https://pkg.go.dev/github.com/shurcooL/binstale)
 
 binstale tells you whether the binaries in your GOPATH/bin are stale or up to date.
 
@@ -95,11 +95,11 @@ This is an example of binstale usage.
 Installation
 ------------
 
-```bash
-go get -u github.com/shurcooL/binstale
+```sh
+go install github.com/shurcooL/binstale@latest
 ```
 
 License
 -------
 
--	[MIT License](https://opensource.org/licenses/mit-license.php)
+-	[MIT License](LICENSE)
